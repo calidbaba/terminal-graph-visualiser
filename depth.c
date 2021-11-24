@@ -33,10 +33,17 @@ int head;
 //how long the program sleeps between redraws
 int sleepTime;
 
+
+//emojis used
+char *node;
+char *discovered;
+char *wall;
+char *finished;
+
 void breadthFirst(int x, int y);
 void depthFirst(int x, int y);
 
-int initialize(){
+int initialize_grid(ascii){
     struct winsize w;
     int result;
 
@@ -45,8 +52,15 @@ int initialize(){
     if(result != 0){
         return 1;
     }
-    height = w.ws_row - 1;    
-    width = w.ws_col/2;
+    if (ascii){
+        height = w.ws_row - 1;    
+        width = w.ws_col;
+    }
+    else{
+        height = w.ws_row - 1;    
+        // when using emojeys width must be cut in 2 as emojis use 2 cols
+        width = w.ws_col/2;
+    }
     queLength = (height* width)/2 +1;
     used_grid = calloc(height, sizeof(grid));
     if (used_grid == NULL){
@@ -70,6 +84,7 @@ int main(int argc, char *argv[]){
     bool help = false;
     bool breadth = false;
     bool fast = false;
+    bool ascii = false;
 
     int (*funcPtr)(int, int);
     if (argc > 1){
@@ -78,8 +93,9 @@ int main(int argc, char *argv[]){
             else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) help = true; 
             else if(strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--breadth") == 0) breadth = true; 
             else if(strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--speed") == 0) fast = true; 
+            else if(strcmp(argv[i], "-a") == 0 || strcmp(argv[i], "--ascii") == 0) ascii = true; 
             else{
-                printf("%s: invalid option %s", argv[0], argv[i]);
+                printf("%s: invalid option %s\n", argv[0], argv[i]);
                 printf("try %s --help for more information.", argv[0]);
                 exit(2);
             }
@@ -92,10 +108,11 @@ int main(int argc, char *argv[]){
         printf("-i, %-20s %s\n", "--infinite",  "runs until stopped with new graphs");
         printf("-b, %-20s %s\n","--breadth", "run breadth first traversal");
         printf("-s, %-20s %s\n","--speed", "speed it up");
+        printf("-a, %-20s %s\n","--ascii", "ascii mode");
         printf("-h, %-20s %s\n","--help", "display help");
         exit(0);
     }
-    result = initialize();
+    result = initialize_grid();
     if(breadth){
         funcPtr = &breadthFirst;     
         que = calloc(queLength, sizeof(QUE));
@@ -115,6 +132,18 @@ int main(int argc, char *argv[]){
     }
     else{
         sleepTime = 30000;
+    }
+    if(ascii){
+        node = "0";
+        wall = "#";
+        discovered = "*";
+        finished = "=";
+    }
+    else{
+        node = "🔴";
+        wall = "⚫️";
+        discovered = "🔵";
+        finished = "🟢";
     }
     while(infiniteMode){
         fprintf(stdout, "\033[H\033[J");
@@ -149,25 +178,25 @@ void makeGraph(){
         for (int k=0; k<width; k++){
             random = rand() % 3;
             if(random == 0){
-                used_grid[i][k].letter = "⚫️";
+                used_grid[i][k].letter = wall;
                 used_grid[i][k].isNode = false;
             }
             else{
-                used_grid[i][k].letter = "🔴";
+                used_grid[i][k].letter = node;
                 used_grid[i][k].visited = false;
                 used_grid[i][k].isNode = true;
             }
         }
     }
     // 0, 0 is always a node
-    used_grid[0][0].letter = "🔴";
+    used_grid[0][0].letter = node;
     used_grid[0][0].visited = false;
     used_grid[0][0].isNode = true;
 
 }
 void depthFirst(y, x){
     used_grid[y][x].visited = true;
-    used_grid[y][x].letter = "🟢";
+    used_grid[y][x].letter = finished;
     printGrid();
     if(y - 1 >= 0){
         if(!used_grid[y-1][x].visited && used_grid[y-1][x].isNode){
@@ -224,7 +253,7 @@ void discoverNodes(y, x){
         newY = y-1;
         if(!used_grid[newY][x].visited && used_grid[newY][x].isNode){
             used_grid[newY][x].visited = true;
-            used_grid[newY][x].letter = "🔵";
+            used_grid[newY][x].letter = discovered;
             enque(newY, x);
             printGrid();
         }
@@ -233,7 +262,7 @@ void discoverNodes(y, x){
         newY = y+1;
         if(!used_grid[newY][x].visited && used_grid[newY][x].isNode){
             used_grid[newY][x].visited = true;
-            used_grid[newY][x].letter = "🔵";
+            used_grid[newY][x].letter = discovered;
             enque(newY, x);
             printGrid();
         }
@@ -242,7 +271,7 @@ void discoverNodes(y, x){
         newX = x+1;
         if(!used_grid[y][newX].visited && used_grid[y][newX].isNode){
             used_grid[y][newX].visited = true;
-            used_grid[y][newX].letter = "🔵";
+            used_grid[y][newX].letter = discovered;
             enque(y, newX);
             printGrid();
         }
@@ -251,11 +280,11 @@ void discoverNodes(y, x){
         newX = x-1;
         if(!used_grid[y][newX].visited && used_grid[y][newX].isNode){
             used_grid[y][newX].visited = true;
-            used_grid[y][newX].letter = "🔵";
+            used_grid[y][newX].letter = discovered;
             enque(y, newX);
             printGrid();
         }
     }
-    used_grid[y][x].letter = "🟢";
+    used_grid[y][x].letter = finished;
     printGrid();
 }
