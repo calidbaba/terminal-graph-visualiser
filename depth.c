@@ -5,7 +5,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-//there can never be more than this many discovered nodes, in reality much smaller
 
 typedef struct {
     char *letter;
@@ -61,15 +60,18 @@ int initialize_grid(ascii){
         // when using emojeys width must be cut in 2 as emojis use 2 cols
         width = w.ws_col/2;
     }
+    //there can never be more than this many discovered nodes, in reality much smaller
     queLength = (height* width)/2 +1;
     used_grid = calloc(height, sizeof(grid));
     if (used_grid == NULL){
         puts("something went wrong with heap allocation");
+        return 1;
     }
     for (int i=0; i<height; i++){
         used_grid[i] = calloc(width, sizeof(grid));
         if (used_grid[i] == NULL){
             puts("something went wrong with heap allocation");
+            return 1;
         }
     }
     return 0;
@@ -112,20 +114,21 @@ int main(int argc, char *argv[]){
         printf("-h, %-20s %s\n","--help", "display help");
         exit(0);
     }
-    result = initialize_grid();
+    result = initialize_grid(ascii);
+    if(result){
+        puts("Someting went wrong in intiliazing the terminal");
+        exit(1);
+    }
     if(breadth){
         funcPtr = &breadthFirst;     
         que = calloc(queLength, sizeof(QUE));
         if(que == NULL){
             puts("Someting went wrong with heap allocation");
+            exit(1);
         }
     }
     else{
         funcPtr = &depthFirst;
-    }
-    if(result){
-        puts("Someting went wrong in intiliazing the terminal");
-        exit(1);
     }
     if(fast){
         sleepTime = 3000;
@@ -151,6 +154,9 @@ int main(int argc, char *argv[]){
         (*funcPtr)(0, 0);
         sleep(1);
     }
+    //trying to disable buffering on newline to make writing grid faster, does not apear to work very well
+    //and makes the deapth fist look lame so i comment out for now
+    /* setvbuf(stdout, NULL, _IOFBF, NULL); */
     /* clear the console */    
     fprintf(stdout, "\033[H\033[J");
     makeGraph();
@@ -160,9 +166,11 @@ int main(int argc, char *argv[]){
 void printGrid(){
     //go to the begining of the terminal 
     fprintf(stdout, "\033[%d;%dH", 0, 0);
-    for(int i=0; i<height; i++){
-        for(int k=0; k<width; k++){
-            fprintf(stdout, used_grid[i][k].letter);
+    for(int y=0; y<height; y++){
+        for(int x=0; x<width; x++){
+            fprintf(stdout, "%s", used_grid[y][x].letter);
+            fflush(stdout);
+
         }
         fprintf(stdout, "\n");
     }
@@ -233,11 +241,13 @@ QUE deque(){
     tail = (tail + 1) % queLength;
     return returnValue;
 }
-void breadthFirst(x, y){
+void breadthFirst(y, x){
+    tail = 0;
+    head = 0;
     used_grid[x][y].visited = true;
     QUE nextNode;
 
-    discoverNodes(x, y);
+    discoverNodes(y, x);
     while(true){
         nextNode = deque();
         if(nextNode.x == -1){
