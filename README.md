@@ -15,5 +15,7 @@ gcc depth.c && ./a.out
 
 ### todo
 
-- add breath first search
 - check terminal size, and adjust the HEIGTH and WIDTH accordingly
+- ascii mode
+- speed flag
+- fullscreen

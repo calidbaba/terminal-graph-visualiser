@@ -3,11 +3,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/ioctl.h>
 
-#define HEIGHT 40
-#define WIDTH 60
 //there can never be more than this many discovered nodes, in reality much smaller
-#define QUELENGTH (((HEIGHT*WIDTH) / 2) + 1)
 
 typedef struct {
     char *letter;
@@ -22,23 +20,56 @@ typedef struct{
     int y;
 } QUE;
 
-//initialize grid
-grid used_grid[HEIGHT][WIDTH];
+grid **used_grid;
+//height and width of grid
+unsigned short height;
+unsigned short width;
+int queLength;
 
-QUE que[QUELENGTH];
+QUE *que;
 int tail;
 int head;
 
+//how long the program sleeps between redraws
+int sleepTime;
 
 void breadthFirst(int x, int y);
 void depthFirst(int x, int y);
 
+int initialize(){
+    struct winsize w;
+    int result;
+
+    result = ioctl(0, TIOCGWINSZ, &w);
+    
+    if(result != 0){
+        return 1;
+    }
+    height = w.ws_row - 1;    
+    width = w.ws_col/2;
+    queLength = (height* width)/2 +1;
+    used_grid = calloc(height, sizeof(grid));
+    if (used_grid == NULL){
+        puts("something went wrong with heap allocation");
+    }
+    for (int i=0; i<height; i++){
+        used_grid[i] = calloc(width, sizeof(grid));
+        if (used_grid[i] == NULL){
+            puts("something went wrong with heap allocation");
+        }
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[]){
     
+    int result;
+
     //check for options
     bool infiniteMode = false;
     bool help = false;
     bool breadth = false;
+    bool fast = false;
 
     int (*funcPtr)(int, int);
     if (argc > 1){
@@ -46,6 +77,7 @@ int main(int argc, char *argv[]){
             if(strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--infinite") == 0 ) infiniteMode = true;
             else if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) help = true; 
             else if(strcmp(argv[i], "-b") == 0 || strcmp(argv[i], "--breadth") == 0) breadth = true; 
+            else if(strcmp(argv[i], "-s") == 0 || strcmp(argv[i], "--speed") == 0) fast = true; 
             else{
                 printf("%s: invalid option %s", argv[0], argv[i]);
                 printf("try %s --help for more information.", argv[0]);
@@ -59,12 +91,30 @@ int main(int argc, char *argv[]){
         puts("--------------------------------------------------");
         printf("-i, %-20s %s\n", "--infinite",  "runs until stopped with new graphs");
         printf("-b, %-20s %s\n","--breadth", "run breadth first traversal");
+        printf("-s, %-20s %s\n","--speed", "speed it up");
         printf("-h, %-20s %s\n","--help", "display help");
         exit(0);
     }
-    if(breadth) funcPtr = &breadthFirst;     
+    result = initialize();
+    if(breadth){
+        funcPtr = &breadthFirst;     
+        que = calloc(queLength, sizeof(QUE));
+        if(que == NULL){
+            puts("Someting went wrong with heap allocation");
+        }
+    }
     else{
         funcPtr = &depthFirst;
+    }
+    if(result){
+        puts("Someting went wrong in intiliazing the terminal");
+        exit(1);
+    }
+    if(fast){
+        sleepTime = 3000;
+    }
+    else{
+        sleepTime = 30000;
     }
     while(infiniteMode){
         fprintf(stdout, "\033[H\033[J");
@@ -81,22 +131,22 @@ int main(int argc, char *argv[]){
 void printGrid(){
     //go to the begining of the terminal 
     fprintf(stdout, "\033[%d;%dH", 0, 0);
-    for(int i=0; i<HEIGHT; i++){
-        for(int k=0; k<WIDTH; k++){
+    for(int i=0; i<height; i++){
+        for(int k=0; k<width; k++){
             fprintf(stdout, used_grid[i][k].letter);
         }
         fprintf(stdout, "\n");
     }
     fflush(stdout);
-    usleep(30000);
+    usleep(sleepTime);
 
 }
 
 void makeGraph(){
     srand(time(NULL));
     int random;
-    for(int i=0; i<HEIGHT; i++){
-        for (int k=0; k<WIDTH; k++){
+    for(int i=0; i<height; i++){
+        for (int k=0; k<width; k++){
             random = rand() % 3;
             if(random == 0){
                 used_grid[i][k].letter = "⚫️";
@@ -124,12 +174,12 @@ void depthFirst(y, x){
             depthFirst(y - 1,x);
         }
     }
-    if(y + 1 < HEIGHT){
+    if(y + 1 < height){
         if(!used_grid[y+1][x].visited && used_grid[y+1][x].isNode){
             depthFirst(y + 1,x);
         }
     }
-    if(x +1 < WIDTH){
+    if(x +1 < width){
         if(!used_grid[y][x+1].visited && used_grid[y][x+1].isNode){
             depthFirst(y,x + 1);
         }
@@ -143,7 +193,7 @@ void depthFirst(y, x){
 void enque(y, x){
     que[head].x = x;
     que[head].y = y;
-    head = (head +1) % QUELENGTH;
+    head = (head +1) % queLength;
 }
 QUE deque(){
     QUE returnValue;
@@ -151,7 +201,7 @@ QUE deque(){
         que[tail].x = -1;
     }
     returnValue = que[tail];
-    tail = (tail + 1) % QUELENGTH;
+    tail = (tail + 1) % queLength;
     return returnValue;
 }
 void breadthFirst(x, y){
@@ -179,7 +229,7 @@ void discoverNodes(y, x){
             printGrid();
         }
     }
-    if(y + 1 < HEIGHT){
+    if(y + 1 < height){
         newY = y+1;
         if(!used_grid[newY][x].visited && used_grid[newY][x].isNode){
             used_grid[newY][x].visited = true;
@@ -188,7 +238,7 @@ void discoverNodes(y, x){
             printGrid();
         }
     }
-    if(x +1 < WIDTH){
+    if(x +1 < width){
         newX = x+1;
         if(!used_grid[y][newX].visited && used_grid[y][newX].isNode){
             used_grid[y][newX].visited = true;
