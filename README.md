@@ -1,4 +1,5 @@
-# depth first search visualiser
+# Graph traversal visualiser
+![image](https://user-images.githubusercontent.com/42800097/143404709-728795d9-c327-4506-9603-f325269b2e7f.png)
 
 ### run
 ```bash
