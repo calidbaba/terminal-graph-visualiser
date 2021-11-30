@@ -25,7 +25,5 @@ Graph traversal visualiser
 
 ### todo
 
-- check terminal size, and adjust the HEIGTH and WIDTH accordingly
-- ascii mode
-- speed flag
-- fullscreen
+- optimazise for better speed/performance
+- fix warnings when compiling

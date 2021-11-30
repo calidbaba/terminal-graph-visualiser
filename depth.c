@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
 #include <sys/ioctl.h>
+
 
 
 typedef struct {
@@ -39,10 +41,17 @@ char *discovered;
 char *wall;
 char *finished;
 
-void breadthFirst(int x, int y);
-void depthFirst(int x, int y);
+//function prototypes
+void discoverNodes(int y, int x);
+void printGrid();
+void breadthFirst(int y, int x);
+void enque(int y, int x);
+int initialize_grid(bool ascii);
+void depthFirst(int y, int x);
+QUE deque();
+void makeGraph();
 
-int initialize_grid(ascii){
+int initialize_grid(bool ascii){
     struct winsize w;
     int result;
 
@@ -88,7 +97,7 @@ int main(int argc, char *argv[]){
     bool fast = false;
     bool ascii = false;
 
-    int (*funcPtr)(int, int);
+    void (*funcPtr)(int, int);
     if (argc > 1){
         for (int i=1; i<argc; i++){
             if(strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--infinite") == 0 ) infiniteMode = true;
@@ -202,7 +211,7 @@ void makeGraph(){
     used_grid[0][0].isNode = true;
 
 }
-void depthFirst(y, x){
+void depthFirst(int y, int x){
     used_grid[y][x].visited = true;
     used_grid[y][x].letter = finished;
     printGrid();
@@ -227,7 +236,7 @@ void depthFirst(y, x){
         }
     }
 }
-void enque(y, x){
+void enque(int y, int x){
     que[head].x = x;
     que[head].y = y;
     head = (head +1) % queLength;
@@ -241,7 +250,7 @@ QUE deque(){
     tail = (tail + 1) % queLength;
     return returnValue;
 }
-void breadthFirst(y, x){
+void breadthFirst(int y, int x){
     tail = 0;
     head = 0;
     used_grid[x][y].visited = true;
@@ -256,7 +265,7 @@ void breadthFirst(y, x){
         discoverNodes(nextNode.y, nextNode.x);
     }
 }
-void discoverNodes(y, x){
+void discoverNodes(int y, int x){
     int newY;
     int newX;
     if(y - 1 >= 0){
